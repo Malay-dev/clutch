@@ -1,0 +1,60 @@
+clutch:
+  schedule: "4h"           # "1h" | "4h" | "nightly" | "30m"
+  timezone: "Asia/Kolkata"
+  digest_time: "07:00"
+
+profile:
+  name: Malay
+  interests:
+    - AI/ML
+    - open source
+    - hackathons
+    - robotics
+    - Bengaluru events
+    - developer tools
+    - LLMs and agents
+  location: Bengaluru
+
+connectors:
+  discord:
+    enabled: true
+    servers:
+      - name: GDG Bangalore
+        channels: [announcements, events]
+
+  luma:
+    enabled: true
+    cities: [Bengaluru, Remote]
+    categories: [tech, ai, developer]
+
+  rss:
+    enabled: true
+    feeds:
+      - https://dev.to/feed
+      - https://news.ycombinator.com/rss
+
+  github:
+    enabled: false
+    watch:
+      - topics: [hacktoberfest, good-first-issue]
+
+  jira:
+    enabled: false
+
+output:
+  google_calendar:
+    calendar_name: "Clutch Radar"
+    colors:
+      critical: "11"     # Tomato (red)
+      high: "6"          # Tangerine (orange)
+      info: "9"          # Peacock (blue)
+
+scoring:
+  critical_threshold: 0.80
+  high_threshold: 0.50
+  auto_expire_days: 3
+
+ollama:
+  host: "http://host.containers.internal:11434"
+  model: "gemma3:4b"
+  timeout: 120

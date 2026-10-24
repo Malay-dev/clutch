@@ -1,0 +1,69 @@
+# Clutch — Podman Compose
+# Usage: podman compose up
+
+services:
+  # Main Clutch app
+  clutch:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: clutch-app
+    env_file: .env
+    environment:
+      # Ollama runs natively on the Mac — reach it via host gateway
+      OLLAMA_HOST: "http://host.containers.internal:11434"
+    volumes:
+      - ./clutch.yaml:/app/clutch.yaml:ro
+      - ./data:/app/data
+      - clutch-tokens:/root/.clutch
+    command: ["run"]
+    restart: unless-stopped
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+
+  # Single run (for demo / testing)
+  clutch-once:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: clutch-once
+    env_file: .env
+    environment:
+      OLLAMA_HOST: "http://host.containers.internal:11434"
+    volumes:
+      - ./clutch.yaml:/app/clutch.yaml:ro
+      - ./data:/app/data
+      - clutch-tokens:/root/.clutch
+    command: ["run", "--once"]
+    profiles:
+      - manual
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+
+  # Temporal server (optional — for prize category)
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: clutch-temporal
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=sqlite
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml
+    profiles:
+      - temporal
+
+  # Temporal UI (optional)
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: clutch-temporal-ui
+    ports:
+      - "8233:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    depends_on:
+      - temporal
+    profiles:
+      - temporal
+
+volumes:
+  clutch-tokens:
