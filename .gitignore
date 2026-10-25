@@ -25,5 +25,5 @@ data/
 
 
 # Documents
-docs/
+docs/*.md
 SUBMISSION.md

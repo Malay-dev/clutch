@@ -1,6 +1,10 @@
 # Clutch
 
-The AI that won't let you miss what matters.
+<p align="center">
+  <img src="docs/images/clutch-banner.png" alt="Clutch — 330+ events. 5 sources. one calendar." width="100%">
+</p>
+
+> The AI that won't let you miss what matters.
 
 Clutch is a local-first AI agent that monitors your communities — Discord, Luma, KonfHub, Hacktoberfest, RSS — scores every event against your interest profile using Gemma 3, and puts what matters on your Google Calendar with escalating color-coded reminders.
 
