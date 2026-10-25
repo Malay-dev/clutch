@@ -81,11 +81,11 @@ def auth(
 def _test_auth() -> None:
     """Test all configured connector credentials."""
     from clutch.config import load_config, load_env
-    from clutch.pipeline import build_connectors
+    from clutch.connectors.discovery import build_connectors_from_config
 
     config = load_config()
     env = load_env()
-    connectors = build_connectors(config, env)
+    connectors = build_connectors_from_config(config, env)
 
     for connector in connectors:
         ok = asyncio.run(connector.health_check())
@@ -97,7 +97,8 @@ def _test_auth() -> None:
 def run(
     once: bool = typer.Option(False, "--once", help="Run the pipeline once and exit"),
     no_calendar: bool = typer.Option(False, "--no-calendar", help="Skip calendar sync"),
-    temporal: bool = typer.Option(False, "--temporal", help="Use Temporal scheduler"),
+    temporal: bool = typer.Option(False, "--temporal", help="Start Temporal scheduled worker"),
+    temporal_once: bool = typer.Option(False, "--temporal-once", help="Run once through Temporal (worker must be running)"),
 ) -> None:
     """Start the Clutch daemon or run once."""
     from clutch.config import load_config, load_env
@@ -105,16 +106,22 @@ def run(
     config = load_config()
     env = load_env()
 
-    if once:
+    if temporal:
+        console.print("[bold]Clutch — Temporal scheduled mode[/bold]\n")
+        from clutch.scheduler.temporal_worker import start_temporal_worker
+
+        asyncio.run(start_temporal_worker(config))
+    elif temporal_once:
+        console.print("[bold]Clutch — Temporal one-shot mode[/bold]\n")
+        from clutch.scheduler.temporal_worker import run_once_temporal
+
+        result = asyncio.run(run_once_temporal(config))
+        console.print(f"\nResult: {result}")
+    elif once:
         console.print("[bold]Clutch — single run[/bold]\n")
         asyncio.run(
             _run_once(config, env, with_calendar=not no_calendar)
         )
-    elif temporal:
-        console.print("[bold]Clutch — Temporal mode[/bold]\n")
-        from clutch.scheduler.temporal_worker import start_temporal_worker
-
-        asyncio.run(start_temporal_worker(config))
     else:
         console.print("[bold]Clutch — daemon mode[/bold]\n")
         console.print(f"Schedule: every {config.clutch.schedule}")
@@ -237,10 +244,214 @@ def digest() -> None:
 @app.command()
 def menubar() -> None:
     """Launch the macOS menu bar app."""
-    from clutch.actions.menubar import run_menubar
-
+    try:
+        from clutch.actions.menubar import run_menubar
+    except ImportError:
+        console.print("[red]Menu bar requires macOS. Install with: pip install clutch[menubar][/red]")
+        raise typer.Exit(1)
     console.print("[bold]Starting Clutch menu bar...[/bold]")
     run_menubar()
+
+
+@app.command()
+def setup(
+    service: str = typer.Argument(help="Service to set up: google"),
+) -> None:
+    """Guided setup for external services."""
+    if service == "google":
+        _setup_google()
+    else:
+        console.print(f"[red]Unknown service: {service}. Available: google[/red]")
+        raise typer.Exit(1)
+
+
+def _setup_google() -> None:
+    """Interactive guided setup for Google Calendar."""
+    from pathlib import Path
+
+    creds_path = Path.home() / ".clutch" / "google_credentials.json"
+
+    console.print("\n[bold]Google Calendar Setup[/bold]\n")
+    console.print("Clutch needs a Google Cloud OAuth credential to manage your calendar.")
+    console.print("You can use any existing Google Cloud project.\n")
+
+    console.print("[bold]Step 1: Pick a Google Cloud project[/bold]")
+    console.print("  Open: https://console.cloud.google.com/cloud-resource-manager")
+    console.print("  Use any existing project, or create a new one.")
+    console.print("")
+
+    console.print("[bold]Step 2: Enable the Calendar API[/bold]")
+    console.print("  Open: https://console.cloud.google.com/apis/library/calendar-json.googleapis.com")
+    console.print("  Select your project, click ENABLE")
+    console.print("")
+
+    console.print("[bold]Step 3: Configure OAuth consent screen[/bold]")
+    console.print("  Open: https://console.cloud.google.com/apis/credentials/consent")
+    console.print("  User type:     External")
+    console.print("  App name:      Clutch")
+    console.print("  Scopes:        Add .../auth/calendar")
+    console.print("  Test users:    Add your Gmail address")
+    console.print("")
+
+    console.print("[bold]Step 4: Create OAuth credentials[/bold]")
+    console.print("  Open: https://console.cloud.google.com/apis/credentials")
+    console.print("  Click: + CREATE CREDENTIALS > OAuth client ID")
+    console.print("  Type:  Desktop app")
+    console.print("  Name:  clutch-desktop")
+    console.print("  Click: CREATE, then DOWNLOAD JSON")
+    console.print("")
+
+    console.print(f"[bold]Step 5: Save the credentials file[/bold]")
+    console.print(f"  mkdir -p ~/.clutch")
+    console.print(f"  mv ~/Downloads/client_secret_*.json {creds_path}")
+    console.print("")
+    console.print(f"[bold]Step 6: Authenticate[/bold]")
+    console.print(f"  clutch auth google")
+    console.print("")
+
+    if creds_path.exists():
+        console.print(f"[green]+ Credentials file found at {creds_path}[/green]")
+        console.print("Ready to authenticate. Run: [bold]clutch auth google[/bold]")
+    else:
+        console.print(f"[yellow]Credentials file not found at {creds_path}[/yellow]")
+        console.print("Complete the steps above, then run: [bold]clutch auth google[/bold]")
+
+
+@app.command("connectors")
+def list_connectors() -> None:
+    """List all discovered connectors (installed plugins)."""
+    from clutch.connectors.discovery import list_available_connectors
+
+    connectors = list_available_connectors()
+    if not connectors:
+        console.print("[yellow]No connectors installed.[/yellow]")
+        console.print("  Install one: pip install clutch-connector-rss")
+        console.print("  Build your own: see connectors/template/")
+        return
+
+    table = Table(title="Installed Connectors", show_lines=False)
+    table.add_column("Name", width=12)
+    table.add_column("Class", width=25)
+    table.add_column("Type", width=10)
+    table.add_column("Module", width=40)
+
+    for c in connectors:
+        table.add_row(c["name"], c["class"], c["source_type"], c["module"])
+
+    console.print(table)
+
+
+@app.command()
+def escalate(
+    title: Optional[str] = typer.Argument(None, help="Title fragment to escalate, or omit for all"),
+) -> None:
+    """Force-escalate calendar events to show color changes (useful for demos)."""
+    from clutch.actions.calendar import CalendarManager, _days_until, _color_for_deadline, _urgency_suffix
+    from clutch.config import load_config
+    from clutch.db import get_active_events, get_db
+
+    config = load_config()
+    conn = get_db()
+    active = get_active_events(conn)
+    cal_events = [se for se in active if se.calendar_event_id]
+
+    if title:
+        cal_events = [se for se in cal_events if title.lower() in se.event.title.lower()]
+
+    if not cal_events:
+        console.print("[yellow]No matching calendar events to escalate.[/yellow]")
+        conn.close()
+        return
+
+    cal = CalendarManager(config)
+    cal.authenticate()
+
+    console.print(f"\n[bold]Escalating {len(cal_events)} calendar event(s):[/bold]\n")
+
+    for se in cal_events:
+        days = _days_until(se.event.deadline)
+        color_name = {
+            "9": "Blueberry (blue)",
+            "6": "Tangerine (orange)",
+            "11": "Tomato (red)",
+        }
+        new_color = _color_for_deadline(se.event.deadline)
+        suffix = _urgency_suffix(se.event.deadline)
+        days_str = f"{days}d left" if days is not None and days >= 0 else "past" if days is not None else "no deadline"
+
+        console.print(f"  {se.event.title[:50]}")
+        console.print(f"    Deadline: {se.event.deadline.strftime('%b %d') if se.event.deadline else '-'} ({days_str})")
+        console.print(f"    Color:    {color_name.get(new_color, new_color)}")
+        console.print(f"    Suffix:   {suffix or '(none)'}")
+
+        try:
+            cal._update_event(se.calendar_event_id, se)
+            console.print(f"    Status:   [green]updated[/green]\n")
+        except Exception as e:
+            console.print(f"    Status:   [red]failed: {e}[/red]\n")
+
+    conn.close()
+    console.print("[bold]Check your Google Calendar to see the color changes.[/bold]")
+
+
+# ── Sandbox commands ──────────────────────────────────────
+
+sandbox_app = typer.Typer(
+    name="sandbox",
+    help="Test features without real tokens or API keys.",
+    no_args_is_help=True,
+)
+app.add_typer(sandbox_app, name="sandbox")
+
+
+@sandbox_app.command("connectors")
+def sandbox_connectors(
+    source: Optional[str] = typer.Option(None, "--source", "-s", help="Filter by source: discord, rss, luma, jira"),
+    count: Optional[int] = typer.Option(None, "--count", "-n", help="Max events to generate"),
+) -> None:
+    """Generate mock events from fake connectors. No tokens needed."""
+    from clutch.sandbox.runner import run_sandbox_connectors
+
+    asyncio.run(run_sandbox_connectors(source_filter=source, count=count))
+
+
+@sandbox_app.command("score")
+def sandbox_score(
+    source: Optional[str] = typer.Option(None, "--source", "-s", help="Filter by source"),
+    count: Optional[int] = typer.Option(None, "--count", "-n", help="Max events to score"),
+) -> None:
+    """Score mock events with Gemma. Needs Ollama running, nothing else."""
+    from clutch.config import load_config
+    from clutch.sandbox.runner import run_sandbox_score
+
+    config = load_config()
+    asyncio.run(run_sandbox_score(config=config, source_filter=source, count=count))
+
+
+@sandbox_app.command("calendar")
+def sandbox_calendar(
+    source: Optional[str] = typer.Option(None, "--source", "-s", help="Filter by source"),
+    count: Optional[int] = typer.Option(None, "--count", "-n", help="Max events"),
+) -> None:
+    """Full pipeline with dry-run calendar. No Google auth needed."""
+    from clutch.config import load_config
+    from clutch.sandbox.runner import run_sandbox_calendar
+
+    config = load_config()
+    asyncio.run(run_sandbox_calendar(config=config, source_filter=source, count=count))
+
+
+@sandbox_app.command("full")
+def sandbox_full(
+    source: Optional[str] = typer.Option(None, "--source", "-s", help="Filter by source"),
+    count: Optional[int] = typer.Option(None, "--count", "-n", help="Max events"),
+) -> None:
+    """Full sandbox pipeline: mock fetch -> Gemma scoring -> dry-run calendar -> SQLite."""
+    from clutch.config import load_config
+    from clutch.sandbox.runner import run_sandbox_full
+
+    config = load_config()
+    asyncio.run(run_sandbox_full(config=config, source_filter=source, count=count))
 
 
 @app.command()
