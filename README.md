@@ -34,6 +34,7 @@ uv pip install -e ".[dev]"
 uv pip install -e connectors/rss -e connectors/luma -e connectors/konfhub -e connectors/hacktoberfest -e connectors/discord
 
 # Configure your interests
+cp clutch.example.yaml clutch.yaml
 vim clutch.yaml
 
 # Test without any API keys

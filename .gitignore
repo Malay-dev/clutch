@@ -27,3 +27,6 @@ data/
 # Documents
 docs/*.md
 SUBMISSION.md
+
+# Personal config (use clutch.example.yaml as template)
+clutch.yaml

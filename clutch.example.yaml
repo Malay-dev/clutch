@@ -4,27 +4,24 @@ clutch:
   digest_time: "07:00"
 
 profile:
-  name: Malay
+  name: Your Name
   interests:
     - AI/ML
     - open source
     - hackathons
-    - robotics
-    - Bengaluru events
-    - developer tools
-    - LLMs and agents
-  location: Bengaluru
+    # add your interests here
+  location: Your City
 
 connectors:
   discord:
-    enabled: true
+    enabled: false
     servers:
-      - name: GDG Bangalore
+      - name: Your Server
         channels: [announcements, events]
 
   luma:
     enabled: true
-    cities: [Bengaluru, Remote]
+    cities: [Your City, Remote]
     categories: [tech, ai, developer]
 
   rss:
@@ -41,7 +38,7 @@ connectors:
   hacktoberfest:
     enabled: true
     countries: [IN]
-    cities: [Bengaluru]
+    cities: []
     include_ended: false
     include_online: true
 
@@ -51,7 +48,7 @@ connectors:
   konfhub:
     enabled: true
     countries: [India]
-    cities: [Bengaluru]
+    cities: []
     include_paid: true
 
 output:
