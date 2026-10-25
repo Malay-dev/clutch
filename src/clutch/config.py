@@ -27,6 +27,8 @@ class ScoringConfig(BaseModel):
     critical_threshold: float = 0.80
     high_threshold: float = 0.50
     auto_expire_days: int = 3
+    max_calendar_events: int = 10
+    max_new_per_run: int = 5
 
 
 class CalendarOutputConfig(BaseModel):
@@ -65,6 +67,8 @@ class ConnectorsConfig(BaseModel):
     discord: DiscordConnectorConfig = Field(default_factory=DiscordConnectorConfig)
     luma: LumaConnectorConfig = Field(default_factory=LumaConnectorConfig)
     rss: RSSConnectorConfig = Field(default_factory=RSSConnectorConfig)
+
+    model_config = {"extra": "allow"}
 
 
 class ClutchCoreConfig(BaseModel):
