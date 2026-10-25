@@ -47,8 +47,26 @@ services:
     ports:
       - "7233:7233"
     environment:
-      - DB=sqlite
-      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=clutch-tigerdata
+    depends_on:
+      - temporal-db
+    profiles:
+      - temporal
+
+  temporal-db:
+    image: pgvector/pgvector:pg16
+    container_name: clutch-tigerdata
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=temporal
+      - POSTGRES_PASSWORD=temporal
+    volumes:
+      - temporal-db-data:/var/lib/postgresql/data
     profiles:
       - temporal
 
@@ -67,3 +85,4 @@ services:
 
 volumes:
   clutch-tokens:
+  temporal-db-data:

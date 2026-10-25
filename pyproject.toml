@@ -7,26 +7,32 @@ license = { text = "MIT" }
 requires-python = ">=3.12"
 authors = [{ name = "Malay Kumar" }]
 
+# Core dependencies only — connector deps live in their own packages
 dependencies = [
-    "typer==0.15.3",
+    "typer==0.16.0",
     "rich==14.0.0",
     "pydantic==2.11.3",
     "pydantic-settings==2.9.1",
     "pyyaml==6.0.2",
     "httpx==0.28.1",
-    "feedparser==6.0.11",
-    "discord.py==2.6.1",
     "google-auth==2.40.1",
     "google-auth-oauthlib==1.2.1",
     "google-api-python-client==2.166.0",
     "apscheduler==3.11.0",
     "sentry-sdk[fastapi]==2.22.0",
-    "rumps==0.4.0",
 ]
 
+# macOS-only dependencies
 [project.optional-dependencies]
+menubar = ["rumps==0.4.0"]
+connectors = [
+    "clutch-connector-rss>=0.1.0",
+    "clutch-connector-discord>=0.1.0",
+    "clutch-connector-luma>=0.1.0",
+]
 temporal = ["temporalio==1.11.0"]
 dev = ["ruff==0.11.12", "pytest==8.3.5"]
+all = ["clutch[connectors,temporal,dev]"]
 
 [project.scripts]
 clutch = "clutch.cli:app"

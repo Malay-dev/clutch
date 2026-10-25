@@ -38,8 +38,21 @@ connectors:
     watch:
       - topics: [hacktoberfest, good-first-issue]
 
+  hacktoberfest:
+    enabled: true
+    countries: [IN]
+    cities: [Bengaluru]
+    include_ended: false
+    include_online: true
+
   jira:
     enabled: false
+
+  konfhub:
+    enabled: true
+    countries: [India]
+    cities: [Bengaluru]
+    include_paid: true
 
 output:
   google_calendar:
@@ -53,8 +66,10 @@ scoring:
   critical_threshold: 0.80
   high_threshold: 0.50
   auto_expire_days: 3
+  max_calendar_events: 10       # max active calendar events at any time
+  max_new_per_run: 5            # max new calendar events created per run
 
 ollama:
-  host: "http://host.containers.internal:11434"
+  host: "http://localhost:11434"
   model: "gemma3:4b"
   timeout: 120

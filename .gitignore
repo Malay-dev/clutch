@@ -22,3 +22,7 @@ data/
 
 # OS
 .DS_Store
+
+
+# Documents
+SUBMISSION.md
